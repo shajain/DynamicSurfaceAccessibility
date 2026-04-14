@@ -1,0 +1,123 @@
+# Log files
+*.log
+logs/
+*.log.*
+
+# Operating System Files
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# IDE and Editor Files
+# VS Code
+.vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+bower_components/
+vendor/
+venv/
+env/
+ENV/
+.venv
+
+# Build Output
+dist/
+build/
+out/
+target/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Package Manager Files
+package-lock.json  # Optional: remove if you want to track it
+yarn.lock          # Optional: remove if you want to track it
+pnpm-lock.yaml     # Optional: remove if you want to track it
+Pipfile.lock       # Optional: remove if you want to track it
+
+# Cache and Temporary Files
+.cache/
+*.tmp
+*.temp
+.temp/
+tmp/
+*.bak
+*.swp
+*.swo
+
+# Test Coverage
+coverage/
+*.coverage
+.nyc_output/
+.pytest_cache/
+htmlcov/
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled Files
+*.pyc
+*.pyo
+__pycache__/
+*.class
+*.o
+*.a
+
+# Secrets and Credentials
+*.pem
+*.key
+*.cert
+credentials.json
+secrets.json
+
+# Misc
+.sass-cache/
+*.pid
+*.seed
+*.pid.lock
+*/data/
