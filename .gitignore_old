@@ -16,13 +16,6 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-
-# --- Crash dumps (investigate before deleting, don't commit) ---
-core
-core.[0-9]*
-*.core
-vgcore.*
-
 # Linux
 *~
 .directory

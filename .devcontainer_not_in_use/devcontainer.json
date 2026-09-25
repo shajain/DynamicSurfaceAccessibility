@@ -1,0 +1,21 @@
+{
+  "name": "cursor-dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "remoteUser": "shajain",
+  "mounts": [
+    "source=/data/shajain, target=/data/shajain, type=bind",
+    "source=/data/dbs, target=/data/dbs, type=bind"
+  ],
+  "postCreateCommand": "bash /data/shajain/container_setup/setup_env.sh"
+}
+
+// {
+//   "name": "cursor-dev",
+//   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+//   "remoteUser": "vscode",
+//   "mounts": [
+//     "source=/data/shajain, target=/data/shajain, type=bind",
+//     "source=/data/dbs, target=/data/dbs, type=bind"
+//   ]
+
+// }

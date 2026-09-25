@@ -1,8 +1,0 @@
-pyproject.toml
-src/dsa/__init__.py
-src/dsa/io.py
-src/dsa.egg-info/PKG-INFO
-src/dsa.egg-info/SOURCES.txt
-src/dsa.egg-info/dependency_links.txt
-src/dsa.egg-info/requires.txt
-src/dsa.egg-info/top_level.txt

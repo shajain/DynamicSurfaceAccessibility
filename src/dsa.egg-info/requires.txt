@@ -1,6 +1,0 @@
-pandas>=2.0
-pyarrow>=14.0
-
-[dev]
-jupyter>=1.0
-ipykernel>=6.0
