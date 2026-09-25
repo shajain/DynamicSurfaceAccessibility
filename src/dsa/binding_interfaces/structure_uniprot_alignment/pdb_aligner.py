@@ -108,7 +108,7 @@ class PDBSequenceAligner(StructureSequenceAligner):
 
     def _generate_mapping_sift(self, chain: str, uniprot_id: str):
         mapping = {}
-        mapping_df = self.sift_mappings[self.sift_mapping["SP_PRIMARY"] == uniprot_id]
+        mapping_df = self.sift_mappings[self.sift_mappings["SP_PRIMARY"] == uniprot_id]
         mapping_df = mapping_df[mapping_df["CHAIN"] == chain]
         structure_residues = self.chain_sequences[chain]
         if mapping_df.empty:

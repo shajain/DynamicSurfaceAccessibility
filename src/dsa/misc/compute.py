@@ -60,8 +60,8 @@ class ComputeManager:
         return self.store.get_saved_keys(from_keys=self.keys_to_process)
 
     def get_unprocessed_keys(self) -> list[str]:
-        unprocessed_keys = [key for key in self.keys_to_process if key not in self.saved_keys]
-        unprocessed_keys = unprocessed_keys + self.unsuccessful_keys
+        done = self.saved_keys + self.unsuccessful_keys
+        unprocessed_keys = [key for key in self.keys_to_process if key not in done]
         return unprocessed_keys
 
 

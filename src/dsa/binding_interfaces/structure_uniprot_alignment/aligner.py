@@ -218,7 +218,7 @@ class StructureSequenceAligner:
 
     @classmethod
     def extract_position(cls, seqid: str|gemmi.SeqId|int|None) -> int|None:
-        if seqid is is_actually_a_number(seqid):
+        if is_actually_a_number(seqid):
             return int(seqid)
         #seqid = str(int(seqid)) if is_actually_a_number(seqid) else seqid
         if not isinstance(seqid, gemmi.SeqId):

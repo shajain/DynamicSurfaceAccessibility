@@ -75,7 +75,7 @@ class Structure(ABC):
 
     def uniprot_to_chains(self, uniprot_id: str) -> list[str]:
         self.setup_aligner_if_none()
-        return self.uniprot_aligner.uniprot_to_chains(uniprot_id)
+        return self.uniprot_aligner.chains_containing_uniprot_id(uniprot_id)
 
     def biochain_to_chain(self, bio_chain: str) -> str:
         bio_subchains = self.bio_model.get_subchains_in_chain(bio_chain)
