@@ -1,5 +1,5 @@
 from dsa.config import PROJECT_ROOT
-from dsa.ms_dsa.ms_dsa import MS_DSA_Builder
+from dsa.ms_dsa.ms_dsa_v2 import MS_DSA_Builder
 import random
 
 sequence_file = PROJECT_ROOT / "src" / "dsa" / "data" / "sequences.json"

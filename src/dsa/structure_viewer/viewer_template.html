@@ -1,0 +1,736 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<script>
+/* 3Dmol.js 2.4.2, BSD-3-Clause (vendor/3Dmol-LICENSE), inlined so the page needs no internet access */
+__3DMOL__
+</script>
+<style>
+  :root { --bg: #ffffff; --fg: #1f2328; --muted: #6e7781; --line: #d0d7de; --panel: #f6f8fa; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               font: 13px/1.4 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  #app { display: flex; height: 100%; min-height: 480px; }
+  #left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  #af-header { flex: 0 0 auto; padding: 4px 8px; font-size: 12px; background: var(--panel); border-bottom: 1px solid var(--line);
+               display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  /* the two views side by side with the same size, so the linked camera gives the same magnification */
+  #views { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: row; }
+  .view { position: relative; flex: 1 1 0; min-width: 0; }
+  #af-wrap { border-right: 1px solid var(--line); }
+  #af-wrap.inactive { display: none; }
+  #af-viewer, #viewer { position: absolute; inset: 0; }
+  .view-label { position: absolute; top: 4px; left: 8px; z-index: 10; font-size: 11px; font-weight: 600; color: var(--muted);
+                background: rgba(255, 255, 255, 0.8); padding: 0 4px; border-radius: 3px; pointer-events: none; }
+  #panel { flex: 0 0 350px; overflow-y: auto; padding: 10px 12px; border-left: 1px solid var(--line); background: var(--panel); }
+  h3 { margin: 0 0 2px; font-size: 15px; }
+  .muted { color: var(--muted); }
+  .hint { color: var(--muted); font-size: 12px; margin-bottom: 2px; }
+  .section { margin-top: 10px; }
+  .section-title { font-weight: 600; margin-bottom: 2px; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { padding: 2px 4px; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr + tr td { border-top: 1px solid var(--line); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  label { display: block; cursor: pointer; }
+  label.inline { display: inline; }
+  label.disabled { color: var(--muted); cursor: default; }
+  label.chain { margin-left: 20px; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+  button { margin-top: 6px; font: inherit; padding: 2px 8px; }
+  select { font: inherit; }
+  #status { margin-top: 2px; }
+  .pinned { color: #b35900; font-weight: 600; }
+  .block { margin-top: 8px; padding-top: 6px; border-top: 2px solid var(--line); }
+  .block-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  #chains { max-height: 200px; overflow-y: auto; }
+  #lysine-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); background: var(--bg); }
+  .lys-row { display: flex; justify-content: space-between; gap: 6px; padding: 1px 6px; cursor: pointer; }
+  .lys-row:hover { background: #eef3fb; }
+  .lys-row.active { background: #fff1c2; font-weight: 600; }
+  .lys-row .muted { font-variant-numeric: tabular-nums; }
+  .disabled-section { opacity: 0.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+      <div id="af-header" hidden>
+        <span id="af-title"></span>
+        <label class="inline" id="plddt-label" hidden><input type="checkbox" id="plddt"> Colour by pLDDT</label>
+        <span id="plddt-legend" class="muted" hidden>
+          <span class="swatch" style="background:#0053d6"></span>&gt;90
+          <span class="swatch" style="background:#65cbf3"></span>70–90
+          <span class="swatch" style="background:#ffdb13"></span>50–70
+          <span class="swatch" style="background:#ff7d45"></span>&lt;50
+        </span>
+      </div>
+    <div id="views">
+      <div class="view inactive" id="af-wrap"><div class="view-label" id="af-label">AlphaFold</div><div id="af-viewer"></div></div>
+      <div class="view"><div class="view-label" id="main-label"></div><div id="viewer"></div></div>
+    </div>
+  </div>
+  <div id="panel">
+    <h3 id="title"></h3>
+    <div class="muted">Drag to rotate, scroll to zoom, right-drag to move. Hover a residue; click to pin it.</div>
+    <div id="status" class="muted"></div>
+    <div class="section">
+      <label class="inline">Cartoon
+        <select id="cartoon">
+          <option value="thin" selected>Thin</option>
+          <option value="normal">Normal</option>
+          <option value="trace">Trace (Cα line)</option>
+        </select>
+      </label>
+    </div>
+    <div class="section">
+      <label><input type="checkbox" id="lysines"> <b>Lysines</b> <span class="count" id="lysine-count"></span></label>
+      <div class="hint">Highlights the lysines that pass every filter below (chains AND bond types AND bond source);
+        the rest of the structure is drawn lighter. Bonded partners appear when you hover or pin a lysine.
+        The filters apply to the AlphaFold panel too, with its own contacts.</div>
+    </div>
+    <div id="filters">
+      <div class="section">
+        <div class="section-title">Chains</div>
+        <div class="hint">Grouped by UniProt; the UniProt box switches all its chains. Check exactly one chain to
+          show its AlphaFold model.</div>
+        <div id="chains"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Bond types</div>
+        <div class="hint">Keep lysines with any checked type. None checked: no filter (hover shows bonds and contacts ≤ 4.5 Å).</div>
+        <div id="legend"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Bond source</div>
+        <div class="hint">Keep lysines with such a bond from any checked source. None checked: no filter
+          (bonds come from <span id="default-sources"></span>).</div>
+        <div id="sources"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Lysines shown <span class="count" id="list-count"></span></div>
+      <div class="hint">Click one to pin it (in both panels) and zoom in; click again to release.</div>
+      <div id="lysine-list"></div>
+      <button id="clear">Clear pin</button>
+      <label style="margin-top:6px"><input type="checkbox" id="vdw" checked> On pin: van der Waals view and 1.4 Å probe</label>
+      <div class="hint">Protein atoms within 8 Å as van der Waals spheres (FreeSASA ProtOr radii); the pinned lysine's
+        NZ is magenta and labelled. Green dots: where the centre of a 1.4 Å probe touching NZ (other residues: any of
+        their atoms) fits without overlapping another atom; they lie 1.4 Å outside NZ's sphere. The translucent cyan
+        sphere is the probe at the most open position (red if none is open). Only protein atoms count, as in the SASA
+        computation.</div>
+    </div>
+    <div class="section" id="info"><span class="muted">Hover a residue to see its properties.</span></div>
+  </div>
+</div>
+<script>
+const DATA = __DATA__;
+const AF_MODELS = DATA.alphafold || {};
+const FITS = DATA.fits || {};
+const HAS_AF_PANEL = DATA.database === "pdb" && Object.keys(AF_MODELS).length > 0;
+
+const CATEGORIES = [
+  {key: "salt_bridge",         label: "Salt bridge",          color: "#d62728"},
+  {key: "hydrogen_bond",       label: "Hydrogen bond",        color: "#1f77b4"},
+  {key: "cation_pi",           label: "Cation–π",             color: "#9467bd"},
+  {key: "covalent_isopeptide", label: "Covalent isopeptide",  color: "#ff7f0e"},
+  {key: "contact_4.5",         label: "Contact ≤ 4.5 Å",      color: "#2ca02c"},
+  {key: "contact_6.5",         label: "Contact ≤ 6.5 Å",      color: "#8c8c8c"},
+];
+// types used when no bond type is checked: the four bonds and contacts <= 4.5 A
+const DEFAULT_TYPES = ["salt_bridge", "hydrogen_bond", "cation_pi", "covalent_isopeptide", "contact_4.5"];
+// where a residue pair comes from: contacts of the drawn PDB assembly between / within chains, or contacts of the
+// AlphaFold model (on a PDB structure: placed on every chain copy of the protein by UniProt number)
+const SOURCES = [
+  {key: "pdb_inter", label: "Inter-chain (PDB)",       pdbOnly: true},
+  {key: "pdb_intra", label: "Intra-chain (PDB)",       pdbOnly: true},
+  {key: "af_intra",  label: "Intra-chain (AlphaFold)", pdbOnly: false},
+];
+const sourceOf = b => b.source === "alphafold" ? "af_intra" : (b.scope === "inter" ? "pdb_inter" : "pdb_intra");
+const SOURCE_LABEL = Object.fromEntries(SOURCES.map(s => [s.key, s.label]));
+const HOVER_COLOR = "#f2c200";
+const FADE_MIX = 0.35;            // with Lysines on: the chain colour mixed a further 35% towards white
+const FADED_LIGAND = "#dddddd";
+const HALO = {radius: 2.0, opacity: 0.28, max: 600};   // translucent sphere around each highlighted lysine side chain
+const MAX_LIST_ROWS = 2000;
+// cartoon options: "all" applies to every residue, "coil" overrides it for loops (residues 3Dmol assigns ss "c").
+// 3Dmol's default ("normal") is 0.4 A thick, with wide helices / strands and narrower coil.
+// "thin" keeps the default helix / strand widths, slightly thinner, and draws loops as thin round tubes (as Mol* does).
+const CARTOONS = {
+  thin:   {all: {thickness: 0.3}, coil: {style: "oval", width: 0.22, thickness: 0.22}},
+  normal: {all: {}},
+  trace:  {all: {style: "trace", thickness: 0.25}},
+};
+// stick radii (A)
+const STICK = {ligand: 0.15, ligandFaded: 0.1, lysine: 0.14, lysineHighlighted: 0.2, lysineFaded: 0.08,
+               hovered: 0.22, partner: 0.19};
+const SIDE_CHAIN_TIP = new Set(["CD", "CE", "NZ"]);
+// van der Waals view on pin: FreeSASA's default ProtOr radii by element (A), probe radius and shown neighbourhood
+const VDW_RADIUS = {C: 1.88, N: 1.64, O: 1.44, S: 1.77, SE: 1.9};
+const vdwRadius = a => VDW_RADIUS[(a.elem || "C").toUpperCase()] ?? 1.8;
+const PROBE = {radius: 1.4, shown: 8.0, points: 300, pointsPerAtom: 80, color: "#22b8cf", buried: "#d62728", dot: "#2ca02c"};
+const ELEMENT_COLOR = {N: "#3050f8", O: "#ff0d0d", S: "#e6c619", SE: "#e6a019"};
+const NZ_COLOR = "#d6249f";   // the pinned lysine's NZ, distinct from the other (blue) nitrogens
+// n points spread evenly on a unit sphere (golden spiral)
+function spherePoints(n) {
+  const pts = [], golden = Math.PI * (3 - Math.sqrt(5));
+  for (let k = 0; k < n; k++) {
+    const y = 1 - (2 * k + 1) / n, r = Math.sqrt(1 - y * y), phi = k * golden;
+    pts.push([Math.cos(phi) * r, y, Math.sin(phi) * r]);
+  }
+  return pts;
+}
+const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2;
+// AlphaFold confidence colours (as on the AlphaFold database)
+const plddtColor = b => b > 90 ? "#0053d6" : b > 70 ? "#65cbf3" : b > 50 ? "#ffdb13" : "#ff7d45";
+
+// ---------- helpers ----------
+function mix(hex, other, f) {
+  const a = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)), b = [1, 3, 5].map(k => parseInt(other.slice(k, k + 2), 16));
+  return "#" + a.map((x, k) => Math.round(x + (b[k] - x) * f).toString(16).padStart(2, "0")).join("");
+}
+function centroid(list) {
+  const n = list.length || 1;
+  return {x: list.reduce((s, a) => s + a.x, 0) / n, y: list.reduce((s, a) => s + a.y, 0) / n, z: list.reduce((s, a) => s + a.z, 0) / n};
+}
+const fmt = (v, digits) => (v === null || v === undefined || Number.isNaN(v)) ? "–" : Number(v).toFixed(digits);
+const CATEGORY = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+const typeNames = types => types.filter(t => t !== "contact_6.5").map(t => CATEGORY[t].label).join(", ") || "Contact ≤ 6.5 Å";
+const checked = obj => Object.keys(obj).filter(k => obj[k]);
+
+// ---------- one viewer with its structure ----------
+class Panel {
+  constructor(kind, element) {
+    this.kind = kind;            // "main" (the page's structure) or "af" (AlphaFold model of the selected chain)
+    this.element = element;
+    this.viewer = null;
+    this.highlighted = new Set();
+  }
+
+  // colours: {chain: {light, dark}}; transform: {rotation, translation} applied to the coordinates
+  load(data, colors, transform) {
+    if (!this.viewer) this.viewer = $3Dmol.createViewer(this.element, {backgroundColor: "white"});
+    this.viewer.clear();
+    this.data = data;
+    this.R = data.residues;
+    this.isPDB = data.database === "pdb";
+    this.colors = colors;
+    this.faded = Object.fromEntries(Object.entries(colors).map(([chain, c]) =>
+      [chain, {light: mix(c.light, "#ffffff", FADE_MIX), dark: mix(c.dark, "#ffffff", 0.55)}]));
+    this.defaultSources = this.isPDB ? ["pdb_inter", "pdb_intra"] : ["af_intra"];
+    this.model = this.viewer.addModel(data.cif, "cif");
+    this.atoms = this.model.selectedAtoms({});
+    if (transform) {
+      const [r, t] = [transform.rotation, transform.translation];
+      for (const a of this.atoms) {
+        const [x, y, z] = [a.x, a.y, a.z];
+        a.x = r[0][0] * x + r[0][1] * y + r[0][2] * z + t[0];
+        a.y = r[1][0] * x + r[1][1] * y + r[1][2] * z + t[1];
+        a.z = r[2][0] * x + r[2][1] * y + r[2][2] * z + t[2];
+      }
+    }
+    // Map every drawn atom to its residue. The CIF is written with _atom_site.id = position + 1, so the serial
+    // identifies the atom; the mapping is checked against the residue names and falls back to file order.
+    const R = this.R, atoms = this.atoms;
+    const assign = residueOf => {
+      let ok = 0;
+      atoms.forEach((a, i) => { const r = residueOf(a, i); a.dsaRes = r; if (r !== undefined && R.resname3[r] === a.resn) ok++; });
+      return ok;
+    };
+    this.matched = assign(a => data.atom_residue[a.serial - 1]);
+    if (this.matched < atoms.length) {
+      const byOrder = assign((a, i) => data.atom_residue[i]);
+      if (byOrder < this.matched) this.matched = assign(a => data.atom_residue[a.serial - 1]); else this.matched = byOrder;
+    }
+    this.atomBySerial = {};
+    this.resAtoms = R.bio_chain.map(() => []);
+    atoms.forEach((a, i) => { this.atomBySerial[i + 1] = a; if (a.dsaRes !== undefined) this.resAtoms[a.dsaRes].push(a); });
+    this.partners = R.bio_chain.map(() => []);
+    for (const b of data.bonds) {
+      const source = sourceOf(b);
+      this.partners[b.res1].push({other: b.res2, types: b.types, dist: b.dist, selfAtom: b.atom1, otherAtom: b.atom2, source});
+      this.partners[b.res2].push({other: b.res1, types: b.types, dist: b.dist, selfAtom: b.atom2, otherAtom: b.atom1, source});
+    }
+    this.lysines = R.bio_chain.map((_, i) => i).filter(i => R.is_lysine[i] === true);
+    const ss = {};
+    atoms.forEach(a => { if (a.atom === "CA") ss[a.ss || "none"] = (ss[a.ss || "none"] || 0) + 1; });
+    console.log(`${data.title}: secondary structure of CA atoms (h helix, s strand, c coil):`, ss);
+    this.viewer.setHoverable({}, true, atom => onHover(this, atom.dsaRes), () => {});
+    this.viewer.setHoverDuration(80);
+    this.viewer.setClickable({}, true, atom => { if (atom.dsaRes !== undefined) onClick(this, atom.dsaRes); });
+  }
+
+  resName(i) { return `${this.R.resname1[i]}-${this.R.resname3[i]}`; }   // e.g. K-LYS, K-M3L
+  resLabel(i) { return `${this.resName(i)} ${this.R.resnum[i]}${this.R.icode[i] || ""} ${this.R.bio_chain[i]}`; }
+  tip(i) { const tip = this.resAtoms[i].filter(a => SIDE_CHAIN_TIP.has(a.atom)); return centroid(tip.length ? tip : this.resAtoms[i]); }
+  plddt(i) { const ca = this.resAtoms[i].find(a => a.atom === "CA"); return ca ? ca.b : null; }
+
+  // the category a pair is shown with, or null if it does not pass the type / source selection
+  partnerCategory(p) {
+    const sources = checked(sourceOn).length ? checked(sourceOn) : this.defaultSources;
+    if (!sources.includes(p.source)) return null;
+    const types = checked(typeOn).length ? checked(typeOn) : DEFAULT_TYPES;
+    for (const c of CATEGORIES) if (types.includes(c.key) && p.types.includes(c.key)) return c;
+    return null;
+  }
+
+  computeHighlighted() {
+    if (!lysBox.checked) return new Set();
+    const filterBonds = checked(typeOn).length > 0 || checked(sourceOn).length > 0;
+    const R = this.R;
+    // the AlphaFold panel shows one chain, so the chain filter only applies to the main panel
+    return new Set(this.lysines.filter(i => (this.kind !== "main" || chainOn[R.bio_chain[i]]) &&
+                                            (!filterBonds || this.partners[i].some(p => this.partnerCategory(p) !== null))));
+  }
+
+  chainColor(atom) {
+    const R = this.R, chain = R.bio_chain[atom.dsaRes];
+    const isLys = R.is_lysine[atom.dsaRes] === true;
+    if (this.kind === "af" && plddtBox.checked && !this.highlighted.has(atom.dsaRes)) {
+      const c = plddtColor(atom.b);
+      return lysBox.checked ? mix(c, "#ffffff", FADE_MIX) : c;
+    }
+    if (!lysBox.checked) { const c = this.colors[chain]; return c ? (isLys ? c.dark : c.light) : "#bbbbbb"; }
+    if (this.highlighted.has(atom.dsaRes)) return (this.colors[chain] || {}).dark || "#666666";
+    const f = this.faded[chain];
+    return f ? f.light : "#dddddd";
+  }
+
+  addLine(serial1, serial2, color, radius) {
+    const a1 = this.atomBySerial[serial1], a2 = this.atomBySerial[serial2];
+    if (!a1 || !a2) return null;
+    this.viewer.addCylinder({start: {x: a1.x, y: a1.y, z: a1.z}, end: {x: a2.x, y: a2.y, z: a2.z},
+                             radius: radius, color: color, dashed: true, fromCap: 1, toCap: 1});
+    return a2;
+  }
+
+  baseStyle() {
+    const v = this.viewer, R = this.R, colorfunc = a => this.chainColor(a);
+    const isLysine = a => a.dsaRes !== undefined && R.is_lysine[a.dsaRes] === true;
+    const isPolymer = a => a.dsaRes !== undefined && (R.kind[a.dsaRes] === "protein" || R.kind[a.dsaRes] === "nucleic");
+    const isHighlighted = a => this.highlighted.has(a.dsaRes);
+    v.removeAllShapes();
+    v.removeAllLabels();
+    const cartoon = CARTOONS[cartoonSelect.value];
+    v.setStyle({}, {cartoon: {...cartoon.all, colorfunc}});
+    if (cartoon.coil) v.setStyle({predicate: a => a.ss === "c"}, {cartoon: {...cartoon.all, ...cartoon.coil, colorfunc}});
+    if (!lysBox.checked) {
+      v.setStyle({predicate: a => !isPolymer(a)}, {stick: {radius: STICK.ligand, colorscheme: "grayCarbon"}});
+      v.addStyle({predicate: isLysine}, {stick: {radius: STICK.lysine, colorfunc}});
+      return;
+    }
+    v.setStyle({predicate: a => !isPolymer(a)}, {stick: {radius: STICK.ligandFaded, color: FADED_LIGAND}});
+    v.addStyle({predicate: a => isLysine(a) && !isHighlighted(a)}, {stick: {radius: STICK.lysineFaded, colorfunc}});
+    v.addStyle({predicate: isHighlighted}, {stick: {radius: STICK.lysineHighlighted, colorfunc}});
+    if (this.highlighted.size <= HALO.max) {
+      for (const i of this.highlighted) {
+        if (i === this.noHalo) continue;   // the pinned lysine in the van der Waals view: the halo would cover NZ and the probe
+        v.addSphere({center: this.tip(i), radius: HALO.radius, color: (this.colors[R.bio_chain[i]] || {}).dark || "#666666",
+                     opacity: HALO.opacity});
+      }
+    }
+  }
+
+  // the hovered / pinned residue in yellow and its partners in their bond colour
+  overlay(i) {
+    const v = this.viewer;
+    v.addStyle({predicate: a => a.dsaRes === i}, {stick: {radius: STICK.hovered, color: HOVER_COLOR}});
+    for (const p of this.partners[i]) {
+      const c = this.partnerCategory(p);
+      if (!c) continue;
+      v.addStyle({predicate: a => a.dsaRes === p.other}, {stick: {radius: STICK.partner, color: c.color}});
+      const a2 = this.addLine(p.selfAtom, p.otherAtom, c.color, 0.06);
+      if (a2) v.addLabel(this.resLabel(p.other), {position: {x: a2.x, y: a2.y, z: a2.z}, fontSize: 11, fontColor: "black",
+                                                  backgroundColor: "white", backgroundOpacity: 0.7, borderThickness: 0});
+    }
+  }
+
+  // van der Waals spheres around residue i, the open probe positions around its NZ (or its atoms) and one probe
+  probeView(i) {
+    const v = this.viewer, R = this.R;
+    const own = this.resAtoms[i];
+    const nz = own.find(a => a.atom === "NZ");
+    const targets = R.is_lysine[i] === true && nz ? [nz] : own;
+    if (!targets.length) return null;
+    const center = centroid(targets);
+    const solute = this.atoms.filter(a => a.dsaRes !== undefined && R.kind[a.dsaRes] === "protein");
+    // spheres for the neighbourhood
+    const shown = new Set(solute.filter(a => dist2(a, center) < PROBE.shown ** 2));
+    const colorfunc = a => {
+      if (a === nz && targets[0] === nz) return NZ_COLOR;
+      const el = (a.elem || "C").toUpperCase();
+      if (ELEMENT_COLOR[el]) return ELEMENT_COLOR[el];
+      if (a.dsaRes === i) return HOVER_COLOR;
+      return (this.colors[R.bio_chain[a.dsaRes]] || {}).light || "#bbbbbb";
+    };
+    for (const [el, radius] of Object.entries(VDW_RADIUS)) {
+      v.addStyle({predicate: a => shown.has(a) && (a.elem || "C").toUpperCase() === el}, {sphere: {radius, colorfunc}});
+    }
+    v.addStyle({predicate: a => shown.has(a) && !(((a.elem || "C").toUpperCase()) in VDW_RADIUS)}, {sphere: {radius: 1.8, colorfunc}});
+    // probe positions: a probe centre at r + 1.4 from a target atom is open if it is at least r_j + 1.4 from every other atom
+    const unit = spherePoints(targets.length === 1 ? PROBE.points : PROBE.pointsPerAtom);
+    let open = 0, total = 0, area = 0, best = null;
+    for (const t of targets) {
+      const rt = vdwRadius(t) + PROBE.radius;
+      const near = solute.filter(a => a !== t && dist2(a, t) < (rt + PROBE.radius + 1.9) ** 2);
+      let openHere = 0;
+      for (const [ux, uy, uz] of unit) {
+        const p = {x: t.x + rt * ux, y: t.y + rt * uy, z: t.z + rt * uz};
+        let clearance = Infinity;
+        for (const a of near) {
+          const c = Math.sqrt(dist2(p, a)) - vdwRadius(a) - PROBE.radius;
+          if (c < clearance) clearance = c;
+          if (clearance < -2) break;
+        }
+        total++;
+        if (clearance >= 0) {
+          open++; openHere++;
+          v.addSphere({center: p, radius: 0.12, color: PROBE.dot});
+        }
+        if (best === null || clearance > best.clearance) best = {p, clearance};
+      }
+      area += 4 * Math.PI * rt * rt * openHere / unit.length;
+    }
+    const isOpen = best.clearance >= 0;
+    v.addSphere({center: best.p, radius: PROBE.radius, color: isOpen ? PROBE.color : PROBE.buried, opacity: 0.6});
+    if (targets[0] === nz) v.addLabel("NZ", {position: nz, fontSize: 12, fontColor: "white", backgroundColor: NZ_COLOR,
+                                             backgroundOpacity: 0.9, borderThickness: 0, alignment: "center"});
+    v.addLabel(isOpen ? "probe 1.4 Å" : "no room for a 1.4 Å probe",
+               {position: best.p, fontSize: 11, fontColor: "black", backgroundColor: "white", backgroundOpacity: 0.7, borderThickness: 0});
+    return {i, open, total, area, target: targets.length === 1 && targets[0] === nz ? "NZ" : "residue"};
+  }
+
+  infoHtml(i, heading) {
+    const R = this.R, isLys = R.is_lysine[i] === true;
+    const unp = R.uniprot_id[i] ? `${R.uniprot_id[i]} ${R.unp_resname[i] || ""}${R.unp_resnum[i] ?? ""}` : "–";
+    const sasaRow = (name, prefix) =>
+      `<tr><td>${name}</td><td class="num">${fmt(R[prefix + "_asa"][i], 1)}</td><td class="num">${fmt(R[prefix + "_rel_asa"][i], 2)}</td>` +
+      `<td class="num">${isLys ? fmt(R[prefix + "_asa_nz"][i], 1) : ""}</td></tr>`;
+    const isPinned = pinned !== null && pinned[this.kind] === i;
+    let html = `<div class="block"><div class="block-title">${heading}</div>
+      <div class="section-title">${isPinned ? '<span class="pinned">Pinned: </span>' : ""}${this.resLabel(i)}</div>
+      <table>
+        ${this.isPDB ? `<tr><th>Bio chain</th><td>${R.bio_chain[i]}</td></tr><tr><th>Author chain</th><td>${R.author_chain[i] ?? "–"}</td></tr>` : ""}
+        <tr><th>Protein (UniProt)</th><td>${R.uniprot_id[i] ?? "–"}</td></tr>
+        <tr><th>UniProt residue</th><td>${unp}</td></tr>
+        <tr><th>Residue</th><td>${this.resName(i)}</td></tr>
+        ${this.isPDB ? `<tr><th>Structure number</th><td>${R.resnum[i]}${R.icode[i] || ""}</td></tr>` : `<tr><th>pLDDT</th><td>${fmt(this.plddt(i), 1)}</td></tr>`}
+      </table>
+      <div class="section"><div class="section-title">SASA</div>
+      <table>
+        <tr><th></th><th class="num">ASA Å²</th><th class="num">rel</th><th class="num">${isLys ? "NZ Å²" : ""}</th></tr>
+        ${this.isPDB ? sasaRow("Assembly (multimer)", "multimer") + sasaRow("Chain alone", "chain") : ""}
+        ${sasaRow("AlphaFold monomer", "alphafold")}
+      </table>`;
+    if (this.probe && this.probe.i === i) {
+      const pr = this.probe;
+      html += `<div class="hint" style="margin-top:4px">Probe check (1.4 Å, ${pr.target === "NZ" ? "around NZ" : "around the residue"}):
+        ${pr.open} of ${pr.total} probe positions open ≈ ${fmt(pr.area, 1)} Å² accessible
+        (compare ${pr.target === "NZ" ? "NZ" : "ASA"} above; protein atoms only).</div>`;
+    }
+    html += `</div>`;
+    const shown = this.partners[i].filter(p => this.partnerCategory(p) !== null).length;
+    html += `<div class="section"><div class="section-title">Contacts (${shown} shown of ${this.partners[i].length})</div>`;
+    if (this.partners[i].length === 0) {
+      html += `<span class="muted">None. Contacts are stored only for pairs with a lysine NZ within 6.5 Å.</span>`;
+    } else {
+      html += `<table><tr><th>Partner</th><th>Type</th><th>Source</th><th class="num">Å</th></tr>` +
+        this.partners[i].slice().sort((a, b) => a.dist - b.dist).map(p => {
+          const c = this.partnerCategory(p);
+          const sw = `<span class="swatch" style="background:${c ? c.color : "transparent"};border:1px solid #999"></span>`;
+          const unpOther = this.isPDB && R.uniprot_id[p.other] ? ` <span class="muted">${R.uniprot_id[p.other]} ${R.unp_resnum[p.other] ?? ""}</span>` : "";
+          return `<tr${c ? "" : ' class="muted"'}><td>${sw}${this.resLabel(p.other)}${unpOther}</td><td>${typeNames(p.types)}</td>` +
+                 `<td>${SOURCE_LABEL[p.source]}</td><td class="num">${fmt(p.dist, 2)}</td></tr>`;
+        }).join("") + `</table>`;
+    }
+    return html + `</div></div>`;
+  }
+}
+
+// ---------- panels ----------
+const main = new Panel("main", document.getElementById("viewer"));
+const af = new Panel("af", document.getElementById("af-viewer"));
+let afActive = false, afChain = null, afUniprot = null, afLinked = false;
+let afIndexByUnp = new Map(), mainIndexByUnp = new Map();   // UniProt number -> residue index (AlphaFold / selected chain)
+
+// controls the panels read
+const cartoonSelect = document.getElementById("cartoon");
+const lysBox = document.getElementById("lysines");
+const plddtBox = document.getElementById("plddt");
+const vdwBox = document.getElementById("vdw");
+const typeOn = {}, sourceOn = {};
+const chainOn = {};
+
+main.load(DATA, DATA.colors, null);
+const R = main.R;
+document.getElementById("title").textContent = DATA.title;
+document.getElementById("status").textContent =
+  `${main.atoms.length.toLocaleString()} atoms, ${R.bio_chain.length.toLocaleString()} residues, ${DATA.bonds.length} residue pairs in contact` +
+  (main.matched < main.atoms.length ? ` — WARNING: ${main.atoms.length - main.matched} atoms not matched to residues` : "");
+document.getElementById("lysine-count").textContent = `(${main.lysines.length} in the structure)`;
+
+// ---------- chains, grouped by UniProt ----------
+const chainOrder = [...new Set(R.bio_chain)];
+const chainUniprot = {}, chainAuthor = {}, chainLysines = Object.fromEntries(chainOrder.map(c => [c, 0]));
+{
+  const votes = {};
+  R.bio_chain.forEach((chain, i) => {
+    chainAuthor[chain] = chainAuthor[chain] ?? R.author_chain[i];
+    if (R.is_lysine[i] === true) chainLysines[chain]++;
+    if (R.uniprot_id[i]) { votes[chain] = votes[chain] || {}; votes[chain][R.uniprot_id[i]] = (votes[chain][R.uniprot_id[i]] || 0) + 1; }
+  });
+  for (const chain of chainOrder) {
+    const v = votes[chain];
+    chainUniprot[chain] = v ? Object.entries(v).sort((a, b) => b[1] - a[1])[0][0] : null;
+    chainOn[chain] = true;
+  }
+}
+const groups = new Map();   // uniprot (or null) -> chains
+for (const chain of chainOrder) {
+  const key = chainUniprot[chain];
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key).push(chain);
+}
+const chainsEl = document.getElementById("chains");
+const dark = chain => (DATA.colors[chain] || {}).dark || "#999999";
+for (const [uniprot, chains] of groups) {
+  const nLys = chains.reduce((s, c) => s + chainLysines[c], 0);
+  const groupLabel = document.createElement("label");
+  groupLabel.innerHTML = `<input type="checkbox" checked> <b>${uniprot ?? "No UniProt"}</b> ` +
+                         `<span class="count">${chains.length} chain${chains.length > 1 ? "s" : ""} · ${nLys} K</span>`;
+  const groupBox = groupLabel.querySelector("input");
+  chainsEl.appendChild(groupLabel);
+  const boxes = [];
+  for (const chain of chains) {
+    const label = document.createElement("label");
+    label.className = "chain";
+    const author = chainAuthor[chain] && chainAuthor[chain] !== chain ? ` (author ${chainAuthor[chain]})` : "";
+    label.innerHTML = `<input type="checkbox" checked> <span class="swatch" style="background:${dark(chain)}"></span>` +
+                      `${chain}${author} <span class="count">· ${chainLysines[chain]} K</span>`;
+    const box = label.querySelector("input");
+    box.addEventListener("change", () => { chainOn[chain] = box.checked; syncGroup(); refresh(); });
+    boxes.push([chain, box]);
+    chainsEl.appendChild(label);
+  }
+  const syncGroup = () => {
+    const on = boxes.filter(([, b]) => b.checked).length;
+    groupBox.checked = on === boxes.length;
+    groupBox.indeterminate = on > 0 && on < boxes.length;
+  };
+  groupBox.addEventListener("change", () => {
+    for (const [chain, box] of boxes) { box.checked = groupBox.checked; chainOn[chain] = groupBox.checked; }
+    groupBox.indeterminate = false;
+    refresh();
+  });
+}
+
+// ---------- bond type and source filters ----------
+const legend = document.getElementById("legend");
+for (const c of CATEGORIES) {
+  typeOn[c.key] = false;
+  const label = document.createElement("label");
+  label.innerHTML = `<input type="checkbox"> <span class="swatch" style="background:${c.color}"></span>${c.label}`;
+  label.querySelector("input").addEventListener("change", e => { typeOn[c.key] = e.target.checked; refresh(); });
+  legend.appendChild(label);
+}
+const sourcesEl = document.getElementById("sources");
+for (const s of SOURCES) {
+  sourceOn[s.key] = false;
+  const available = main.isPDB || !s.pdbOnly;
+  const n = DATA.bonds.filter(b => sourceOf(b) === s.key).length;
+  const label = document.createElement("label");
+  if (!available) label.className = "disabled";
+  label.innerHTML = `<input type="checkbox" ${available ? "" : "disabled"}> ${s.label} ` +
+                    `<span class="count">(${available ? n + " pairs" : "not in an AlphaFold model"})</span>`;
+  label.querySelector("input").addEventListener("change", e => { sourceOn[s.key] = e.target.checked; refresh(); });
+  sourcesEl.appendChild(label);
+}
+document.getElementById("default-sources").textContent = main.isPDB
+  ? "Inter- and Intra-chain (PDB); in the AlphaFold panel, its own contacts" : "the AlphaFold model";
+
+// ---------- the AlphaFold panel ----------
+const afWrap = document.getElementById("af-wrap");
+const afTitle = document.getElementById("af-title");
+document.getElementById("af-header").hidden = !HAS_AF_PANEL;
+document.getElementById("main-label").textContent = HAS_AF_PANEL ? DATA.title : "";
+document.getElementById("main-label").hidden = !HAS_AF_PANEL;
+
+function selectedChain() {
+  const on = chainOrder.filter(c => chainOn[c]);
+  return on.length === 1 ? on[0] : null;
+}
+
+function updateAlphaFold() {
+  if (!HAS_AF_PANEL) return;
+  const chain = selectedChain();
+  const fit = chain ? FITS[chain] : null;
+  const uniprot = fit ? fit.uniprot_id : (chain ? chainUniprot[chain] : null);
+  let message = null;
+  if (!chain) message = "AlphaFold panel: check exactly one chain to show the AlphaFold model of its protein.";
+  else if (!uniprot) message = `AlphaFold panel: chain ${chain} has no UniProt id.`;
+  else if (!AF_MODELS[uniprot]) message = `AlphaFold panel: no AlphaFold model for ${uniprot} (chain ${chain}).`;
+  else if (!fit || !fit.rotation) message = `AlphaFold panel: too few residues of ${uniprot} in common with chain ${chain} to superpose (${fit ? fit.n : 0}).`;
+  const wasActive = afActive;
+  afActive = message === null;
+  afWrap.classList.toggle("inactive", !afActive);
+  document.getElementById("plddt-label").hidden = !afActive;
+  document.getElementById("plddt-legend").hidden = !(afActive && plddtBox.checked);
+  if (!afActive) {
+    afTitle.textContent = message;
+    afChain = afUniprot = null;
+    if (wasActive) main.viewer.resize();
+    return;
+  }
+  afTitle.innerHTML = `<b>AlphaFold ${uniprot}</b> (left) superposed on chain ${chain}: RMSD ${fmt(fit.rmsd, 2)} Å over ${fit.n} Cα ` +
+                      `<span class="muted">(rotated and zoomed with the PDB structure on the right)</span>`;
+  document.getElementById("af-label").textContent = `AlphaFold ${uniprot}`;
+  if (chain !== afChain) {
+    const c = DATA.colors[chain];
+    const model = AF_MODELS[uniprot];
+    const colors = Object.fromEntries([...new Set(model.residues.bio_chain)].map(ch => [ch, c]));
+    af.load(model, colors, fit);
+    afChain = chain; afUniprot = uniprot;
+    afIndexByUnp = new Map();
+    af.R.resnum.forEach((n, j) => { if (af.R.kind[j] === "protein") afIndexByUnp.set(n, j); });
+    mainIndexByUnp = new Map();
+    R.bio_chain.forEach((ch, i) => { if (ch === chain && R.uniprot_id[i] === uniprot && R.unp_resnum[i] !== null) mainIndexByUnp.set(R.unp_resnum[i], i); });
+    if (!afLinked) { main.viewer.linkViewer(af.viewer); af.viewer.linkViewer(main.viewer); afLinked = true; }
+    main.viewer.resize(); af.viewer.resize();
+    af.viewer.setView(main.viewer.getView());
+  } else if (!wasActive) {
+    main.viewer.resize(); af.viewer.resize();
+    af.viewer.setView(main.viewer.getView());
+  }
+}
+
+// the residue of the other panel at the same UniProt position (same residue type), or null
+function counterpart(panel, i) {
+  if (!afActive || i === null || i === undefined) return null;
+  if (panel === main) {
+    if (R.bio_chain[i] !== afChain || R.uniprot_id[i] !== afUniprot || R.unp_resnum[i] === null) return null;
+    const j = afIndexByUnp.get(R.unp_resnum[i]);
+    return j !== undefined && af.R.resname1[j] === R.resname1[i] ? j : null;
+  }
+  const j = mainIndexByUnp.get(af.R.resnum[i]);
+  return j !== undefined && R.resname1[j] === af.R.resname1[i] ? j : null;
+}
+const pairFor = (panel, i) => panel === main ? {main: i, af: counterpart(main, i)} : {main: counterpart(af, i), af: i};
+
+// ---------- hover / pin ----------
+let current = null;   // {main, af} residue indices shown (hovered or pinned)
+let pinned = null;
+
+function display(pair) {
+  current = pair;
+  const panels = afActive ? [main, af] : [main];
+  const probeOn = pinned !== null && pair === pinned && vdwBox.checked;
+  for (const p of panels) {
+    const idx = pair ? pair[p.kind] : null;
+    p.noHalo = probeOn ? idx : null;
+    p.baseStyle();
+    p.probe = null;
+    if (idx === null || idx === undefined) continue;
+    p.overlay(idx);
+    if (probeOn) p.probe = p.probeView(idx);
+  }
+  let html = "";
+  if (pair && pair.main !== null && pair.main !== undefined) html += main.infoHtml(pair.main, main.isPDB ? "PDB structure" : "AlphaFold model");
+  if (pair && afActive && pair.af !== null && pair.af !== undefined) html += af.infoHtml(pair.af, `AlphaFold ${afUniprot} (same UniProt residue)`);
+  if (pair && afActive && pair.main !== null && pair.af === null) html += `<div class="block muted">No AlphaFold residue at this UniProt position.</div>`;
+  if (pair && pair.main === null && pair.af !== null) html = af.infoHtml(pair.af, `AlphaFold ${afUniprot}`) +
+                                                            `<div class="block muted">This residue is not in chain ${afChain}.</div>`;
+  document.getElementById("info").innerHTML = html || '<span class="muted">Hover a residue to see its properties.</span>';
+  markActive();
+  for (const p of panels) p.viewer.render();
+}
+
+function onHover(panel, i) {
+  if (pinned !== null || i === undefined) return;
+  if (current && current[panel.kind] === i) return;
+  display(pairFor(panel, i));
+}
+
+function onClick(panel, i) {
+  if (pinned !== null && pinned[panel.kind] === i) { unpin(); return; }   // clicking the pinned residue again releases it
+  pinned = pairFor(panel, i);
+  display(pinned);
+}
+
+function pinFromList(i) {
+  if (pinned !== null && pinned.main === i) { unpin(); return; }
+  pinned = pairFor(main, i);
+  display(pinned);
+  const c = main.tip(i);
+  main.viewer.zoomTo({predicate: a => (a.x - c.x) ** 2 + (a.y - c.y) ** 2 + (a.z - c.z) ** 2 < 100}, 500);   // atoms within 10 A
+}
+
+function unpin() {
+  pinned = null;
+  display(null);
+}
+
+// ---------- list of the highlighted lysines ----------
+const listEl = document.getElementById("lysine-list");
+function buildList() {
+  listEl.innerHTML = "";
+  const shown = lysBox.checked ? [...main.highlighted] : main.lysines.filter(i => chainOn[R.bio_chain[i]]);
+  document.getElementById("list-count").textContent = lysBox.checked ? `(${shown.length})` : `(${shown.length}; turn on Lysines to filter)`;
+  for (const i of shown.slice(0, MAX_LIST_ROWS)) {
+    const row = document.createElement("div");
+    row.className = "lys-row";
+    row.dataset.res = i;
+    const nz = main.isPDB ? R.multimer_asa_nz[i] : R.alphafold_asa_nz[i];
+    const unp = R.uniprot_id[i] ? `${R.uniprot_id[i]} ${R.unp_resnum[i] ?? ""}` : "no UniProt";
+    const j = counterpart(main, i);
+    const inAf = j !== null && af.highlighted.has(j) ? " · AF ✓" : "";
+    row.innerHTML = `<span>${main.resLabel(i)}</span><span class="muted">${unp} · NZ ${fmt(nz, 1)}${inAf}</span>`;
+    row.title = `NZ = NZ SASA (Å²) ${main.isPDB ? "in the assembly" : "in the AlphaFold model"}` +
+                (afActive ? "; AF ✓ = also highlighted in the AlphaFold panel" : "");
+    row.addEventListener("click", () => pinFromList(i));
+    listEl.appendChild(row);
+  }
+  if (shown.length > MAX_LIST_ROWS) {
+    const more = document.createElement("div");
+    more.className = "muted"; more.style.padding = "2px 6px";
+    more.textContent = `… ${shown.length - MAX_LIST_ROWS} more; narrow the selection to list them`;
+    listEl.appendChild(more);
+  }
+  markActive();
+}
+function markActive() {
+  for (const row of listEl.children) if (row.dataset.res !== undefined) row.classList.toggle("active", pinned !== null && Number(row.dataset.res) === pinned.main);
+}
+
+// ---------- updates ----------
+function refresh() {
+  const chainBefore = afChain;
+  updateAlphaFold();
+  main.highlighted = main.computeHighlighted();
+  if (afActive) af.highlighted = af.computeHighlighted();
+  document.getElementById("filters").classList.toggle("disabled-section", !lysBox.checked);
+  if (afChain !== chainBefore) {
+    // the chain shown in the AlphaFold panel changed: re-pair the pinned / shown residue
+    if (pinned !== null) pinned = pinned.main !== null ? pairFor(main, pinned.main) : null;
+    if (current !== null) current = current.main !== null ? pairFor(main, current.main) : null;
+  }
+  buildList();
+  display(pinned || current);
+}
+cartoonSelect.addEventListener("change", refresh);
+lysBox.addEventListener("change", refresh);
+plddtBox.addEventListener("change", refresh);
+vdwBox.addEventListener("change", () => display(pinned || current));
+document.getElementById("clear").addEventListener("click", unpin);
+
+refresh();
+main.viewer.zoomTo();
+main.viewer.render();
+</script>
+</body>
+</html>
